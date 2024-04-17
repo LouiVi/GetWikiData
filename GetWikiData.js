@@ -3,7 +3,7 @@ app.LoadPlugin( "Support" );
 app.LoadPlugin( "DsNav" );
 app.LoadPlugin( "Utils" );
 
-
+var wikiPage;
 //Create an action bar at the top.
 function CreateActionBar()
 {
@@ -54,7 +54,7 @@ txtSearch.SetTextShadow( 7, 2, 2, "#000000" );
 
 function OnKeyboardShown( shown )
 {
-    app.ShowPopup( "Keyboard shown: " + shown );
+    //app.ShowPopup( "Keyboard shown: " + shown );
 }
 //Called when application is started.
 function OnStart()
@@ -78,13 +78,18 @@ db = app.OpenDatabase( "/storage/emulated/0/Download/sqlite/WikipediaMulti3.sqli
 	CreateActionBar();
 	layH = app.CreateLayout( "Linear", "Horizontal,FillX" )
 lay.AddChild( layH );
-
-txt = app.CreateTextEdit( "", 0.8, -1, "SingleLine,AutoSelect");
+layH.SetElevation( 15 );
+layH.SetGravity( 45 );
+rColor = utils.RandomHexColor(false);//"#E3697A";
+layH.SetCornerRadius( 15 )
+layH.SetBackGradient( utils.GetGradientColors(utils.GetGradientColors(rColor)[1])[0], utils.GetGradientColors(rColor)[1], utils.GetGradientColors(utils.GetGradientColors(rColor)[1])[1] )
+txt = app.CreateTextEdit( "", 0.678, -1, "SingleLine,AutoSelect");
 txt.SetHint( "Enter keyword to search" )
 txt.SetOnEnter(  OnEnter );
 txt.SetOnFocus(  OnFocus );
+//txt.SetBackGradient(  )
 	layH.AddChild( txt );
-	btn = app.CreateButton( "Go", 0.2, -1,"Custom" );
+	btn = app.CreateButton( "[fa-search] Search", 0.322, -1,"Custom, FontAwesome" );
 	btn.SetOnTouch( btn_OnTouch );
 	btn.SetOnLongTouch( btn_OnTouch )
 	layH.AddChild( btn );
@@ -92,6 +97,7 @@ txt.SetOnFocus(  OnFocus );
 	rColor = "#dedede";
 	list.SetBackGradient( utils.GetGradientColors(utils.GetGradientColors(rColor)[1])[0], utils.GetGradientColors(rColor)[1], utils.GetGradientColors(utils.GetGradientColors(rColor)[1])[1] )
 	list.SetOnTouch( list_OnTouch );
+		list.SetOnLongTouch( list_OnLongTouch );
 	list.SetFontFile( "Misc/LuckiestGuy-Regular.ttf");//Misc/Jersey10Charted-Regular.ttf" );
 	lay.AddChild( list );
 	list.SetTextColor1( "#343434" );
@@ -99,7 +105,7 @@ txt.SetOnFocus(  OnFocus );
 	list.SetTextSize( 14 )
 	list.SetTextShadow( 5,2,2,"#efefef" )
 	list.SetTextShadow2( 7,2,2,"#000000" )
-	list.SetIconSize( 96, "px" )
+	list.SetIconSize( 128, "px" )
 
 	//Create a text label and add it to layout.
 	//txt = app.CreateText( "Hello", 1, 0.1, "MultiLine" )
@@ -150,6 +156,11 @@ function list_OnTouch(title, body, icon, index)
 	db.ExecuteSql( "select textContent, htmlContent, lang from Wiki_Data Where title Like '%" + title + "%';", [], OnResult2 ) 
 }
 
+function list_OnLongTouch(title, body, icon, index)
+{
+	db.ExecuteSql( "select title, textContent, htmlContent, lang from Wiki_Data Where title Like '%" + title + "%';", [], OnResult3 ) 
+}
+
 
 //Callback to show query results in debug.  
 function OnResult( results )   
@@ -166,12 +177,20 @@ app.HideProgress();
        /* if(len==1) t = item.title + ":" + item.lang +  ":Img/" + item.lang + ".png"
         if(i==0){}else{if(i<len-1) t+=",";}
         if(i<len-1) t += item.title + ":" + item.lang +  ":Img/" + item.lang +".png";*/
-   if(len==1) t = item.title + ":Total words # " + item.textContent.split(" ").length +  ":Img/" + item.lang + ".png"
+   switch (item.lang){
+   	case "eng":
+   if(len==1) t = item.title + ":Total words #^c^" + item.textContent.split(" ").length +  ":Img/" + item.lang + ".png"
         if(i==0){}else{if(i<len-1) t+=",";}
-        if(i<len-1) t += item.title + ":Total words # " + item.textContent.split(" ").length + ":Img/" + item.lang +".png";
-    
+        if(i<len-1) t += item.title + ":Total words #^c^" + item.textContent.split(" ").length + ":Img/" + item.lang +".png";
+  break;
+      case "spa":
+      if(len==1) t = item.title + ":Total de palabras #^c^" + item.textContent.split(" ").length +  ":Img/" + item.lang + ".png"
+        if(i==0){}else{if(i<len-1) t+=",";}
+        if(i<len-1) t += item.title + ":Total de palabras #^c^" + item.textContent.split(" ").length + ":Img/" + item.lang +".png";
+        break;
+        default:
      }  
-    
+    }
     //txt.SetText( s )
     list.SetList( t.split(",").sort().join(",")/*.replace(",,","")*/);
     app.SetClipboardText( t.split(",").sort().join(",").replace(",,",""));
@@ -209,6 +228,108 @@ function OnResult2( results )
     //list.SetList( t );
     
 }  
+
+//Callback to show query results in debug.  
+function OnResult3( results )   
+{  
+    var s = "", t = "";
+    var len = results.rows.length;
+    //alert(len + " results.");
+    for(var i = 0; i < len; i++ )   
+    {  
+        var item = results.rows.item(i)
+        //window.open("", item.htmlContent);
+       /* if(item.lang == "spa"){
+        app.TextToSpeech( item.textContent.replace("Search","").replace("Article Talk","").replace("Edit","").replace("Language","").replace("Watch","").replace("Buscar","").replace("Vigilar","").replace("Idioma",""), 1, 1, null, null, "es-co")
+        }else if(item.lang == "fre"){
+        app.TextToSpeech( item.textContent.replace("Search","").replace("Article Talk","").replace("Edit","").replace("Language","").replace("Watch","").replace("Buscar","").replace("Vigilar","").replace("Idioma",""), 1, 1, null, null, "fr-fr")
+        }else if(item.lang == "ita"){
+        app.TextToSpeech( item.textContent.replace("Search","").replace("Article Talk","").replace("Edit","").replace("Language","").replace("Watch","").replace("Buscar","").replace("Vigilar","").replace("Idioma",""), 1, 1, null, null, "it-it")
+        }else if(item.lang == "eng"){
+        app.TextToSpeech( item.textContent.replace("Search","").replace("Article Talk","").replace("Edit","").replace("Language","").replace("Watch","").replace("Buscar","").replace("Vigilar","").replace("Idioma",""), 1, 1, null, null, "en-us")
+        }
+        */
+        wikiPage = item.htmlContent;
+        //Create a wizard dialog.
+    wiz = app.CreateWizard( item.title, 1, 1, OnWizard  )
+    wiz.Show()
+
+        //web.LoadHtml( item.htmlContent, "https://www.wikipedia.org");
+        //list.Gone();
+        //web.Animate( "FallRotate", null, 1250 );
+        //s += item.id + ", " + item.title + ", " + item.textContent + "\r\n";
+        //t += item.title + ",";
+    }  
+    //txt.SetText( s )
+    //list.SetList( t );
+    
+}  
+
+//Handle wizard pages.
+function OnWizard( lay, page )
+{
+    console.log( "Wizard page:" + page  )
+    
+    if( page==0 ) //<-- Page zero is for setup.
+    {
+    
+    web = app.CreateWebView( 1,1 );
+        //Create text box for user instructions.
+        //wizTxt = app.CreateText( "", -1,-1,"MultiLine" )
+        //wizTxt.SetTextSize( 19 )
+        //wizTxt.SetTextColor( "#555555" )
+        lay.AddChild( web )
+        
+        //Create controls for wizard (some can start hidden).
+        wizFrm = app.CreateLayout( "Frame" )
+        wizFrm.SetMargins( 0,0.05,0,0 )
+        wizFrm.SetBackground( "/res/drawable/picture_frame" )
+        wizFrm.Gone()
+        lay.AddChild( wizFrm )
+        
+       /* wizImg = app.CreateImage( "/Sys/Img/Hello.png", 0.1, -1, "button" ) 
+        wizImg.SetOnTouchUp( function(){ app.ShowPopup("Button Pressed")} )
+        wizFrm.AddChild( wizImg )
+        
+        //Create text box for checkered flag icon.
+        wizFlag = app.CreateText( "[fa-flag-checkered]",-1,-1,"FontAwesome" )
+        wizFlag.SetMargins( 0,0.05,0,0 )
+        wizFlag.SetTextSize( 64 )
+        wizFlag.Gone()
+        lay.AddChild( wizFlag )*/
+        
+    }
+    else if( page==1 ) {
+        //var msg = "This is the first page of your wizard";
+        //wizTxt.SetText( msg )
+        web.LoadHtml( wikiPage, "https://wikipedia.org/" )
+        wizFrm.Gone()
+    }
+    else if( page==2 ) {
+        var msg = "This second page contains an image button\n\nYou can put any"
+            + " controls you like here, including a webview and have as many"
+            + " pages as you like"
+        web.LoadHtml( msg )
+        wizFrm.Show() //<-- make the image button visible on this page only
+        wizFlag.Gone()
+    }
+    else if( page==3 ) {
+       var msg = "Wizard complete!"
+       web.LoadHtml( msg ) 
+       wizFrm.Gone()
+       //wizFlag.Show()
+       wiz.Finish()
+    }
+    else if( page==4 ) 
+    {
+       wiz.Dismiss()
+       app.ShowPopup( "Wizard finished" )
+    }
+    else if( page < 0 )
+    {
+        app.ShowPopup( "Wizard cancelled" )
+    }
+}
 
 //Callback to show errors.  
 function OnError( msg )   
