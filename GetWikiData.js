@@ -1,7 +1,20 @@
 cfg.Light, cfg.Portrait, cfg.MUI;
+app.Script( "Pako.js" )
 app.LoadPlugin( "Support" );
 app.LoadPlugin( "DsNav" );
 app.LoadPlugin( "Utils" );
+
+function compressString(input) {
+    const binaryString = new TextEncoder().encode(input);
+    const compressed = pako.deflate(binaryString);
+    return btoa(String.fromCharCode(...compressed)); // Convert to Base64
+}
+
+function uncompressString(compressed) {
+    const binaryString = Uint8Array.from(atob(compressed), c => c.charCodeAt(0));
+    const decompressed = pako.inflate(binaryString);
+    return new TextDecoder().decode(decompressed);
+}
 
 var wikiPage;
 //Create an action bar at the top.
@@ -66,7 +79,7 @@ app.SetStatusBarColor(utils.RandomHexColor(true));
 rColor = utils.RandomHexColor(false);//"#E3697A";
 app.SetOnShowKeyboard( OnKeyboardShown )
 
-db = app.OpenDatabase( "/storage/emulated/0/Download/sqlite/WikipediaMulti3.sqlite" )  
+db = app.OpenDatabase( "/storage/emulated/0/Download/WikiComprexxx.sqlite" )  
       
      //db.ExecuteSql("DROP TABLE Wiki_Data;");
     //Create a table (if it does not exist already).  
@@ -85,6 +98,7 @@ layH.SetCornerRadius( 15 )
 layH.SetBackGradient( utils.GetGradientColors(utils.GetGradientColors(rColor)[1])[0], utils.GetGradientColors(rColor)[1], utils.GetGradientColors(utils.GetGradientColors(rColor)[1])[1] )
 txt = app.CreateTextEdit( "", 0.678, -1, "SingleLine,AutoSelect");
 txt.SetHint( "Enter keyword to search" )
+txt.SetTextColor( "#ffffff" )
 txt.SetOnEnter(  OnEnter );
 txt.SetOnFocus(  OnFocus );
 //txt.SetBackGradient(  )
@@ -144,7 +158,7 @@ function btn_OnTouch()
 app.HideKeyboard();
 app.ShowProgress( "Searching ...", "NoDim,NonModal");
 //app.ShowPopup( "Searching ..." );
-	db.ExecuteSql( "select * from Wiki_Data Where textContent Like '%" + txt.GetText() + "%';", [], OnResult ) 
+	db.ExecuteSql( "select distinct title, textContent, lang from Wiki_Data Where textContent Like '%" + txt.GetText() + "%';", [], OnResult ) 
 	//web.Gone();
 	list.Animate( "NewsPaper" );
 	layHoriz.Animate( "Bounce" );
@@ -153,7 +167,34 @@ app.ShowProgress( "Searching ...", "NoDim,NonModal");
 
 function list_OnTouch(title, body, icon, index)
 {
-	db.ExecuteSql( "select textContent, htmlContent, lang from Wiki_Data Where title Like '%" + title + "%';", [], OnResult2 ) 
+
+html = uncompressString(  app.ReadFile( "/storage/emulated/0/Wikipedia/html/"+title+".html" ));
+if(typeof dl == "undefined"){
+dl = app.CreateDialog( title );
+}
+dl.SetTitle( title );
+dl.SetTitleTextSize( 20 );
+dl.SetTitleColor( "#eff434" )
+dLay = app.CreateLayout( "Linear","FillXY" );
+dl.AddLayout( dLay );
+dLay2= app.CreateLayout( "Linear","Horizontal" );
+dLay.AddChild( dLay2 );
+btnD1= app.CreateButton( "[fa-bullhorn] Read", 0.322, -1,"Left, Custom, FontAwesome" );
+	btnD1.SetOnTouch( ()=>{app.TextToSpeech(  app.ReadFile( "/storage/emulated/0/Wikipedia/text/"+title+".txt" ).replace("Search","").replace("Article","").replace("Talk","").replace("Language","").replace("Watch","").replace("Edit",""), 1, 1);});
+	dLay2.AddChild( btnD1 )
+
+btnD = app.CreateButton( "[fa-close] Close", 0.322, -1,"Left, Custom, FontAwesome" );
+	btnD.SetOnTouch( ()=>{dl.Dismiss()});
+	dLay2.AddChild( btnD )
+dWeb = app.CreateWebView( 1, -1 );
+dWeb.LoadHtml( html, "https://www.wikipedia.org/" );
+dLay.AddChild( dWeb );
+dl.SetSize( 0.98, 0.65 )
+dl.Show();
+//dWeb.Execute("document.body.innerText", (results)=>{app.TextToSpeech(results,1,1)});
+//app.TextToSpeech(  app.ReadFile( "/storage/emulated/0/Wikipedia/text/"+title+".txt" ), 1, 1);
+//alert(title);
+	db.ExecuteSql( "select distinctrow title. textContent, htmlContent, lang from Wiki_Data Where title Like '%" + title + "%';", [], OnResult2 ) 
 }
 
 function list_OnLongTouch(title, body, icon, index)
@@ -208,6 +249,7 @@ function OnResult2( results )
     for(var i = 0; i < len; i++ )   
     {  
         var item = results.rows.item(i)
+      //  alert(item.textContent);
         //window.open("", item.htmlContent);
         if(item.lang == "spa"){
         app.TextToSpeech( item.textContent.replace("Search","").replace("Article Talk","").replace("Edit","").replace("Language","").replace("Watch","").replace("Buscar","").replace("Vigilar","").replace("Idioma",""), 1, 1, null, null, "es-co")
@@ -249,6 +291,8 @@ function OnResult3( results )
         app.TextToSpeech( item.textContent.replace("Search","").replace("Article Talk","").replace("Edit","").replace("Language","").replace("Watch","").replace("Buscar","").replace("Vigilar","").replace("Idioma",""), 1, 1, null, null, "en-us")
         }
         */
+        //window.open("", item.htmlContent);
+        //alert(item.title)
         wikiPage = item.htmlContent;
         //Create a wizard dialog.
     wiz = app.CreateWizard( item.title, 1, 1, OnWizard  )
